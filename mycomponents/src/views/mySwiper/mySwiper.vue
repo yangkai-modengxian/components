@@ -8,7 +8,7 @@
             </div>
             <div class="points_box">
                 <div class="points">
-                    <div class="each_point" v-for="(item, index) in swiperImgArr" :key="index" :class="{current:index==imageIndex}"></div>
+                    <div class="each_point" v-for="(item, index) in indexItems" :key="index" :class="{current:item.indexItemStyle}"></div>
                 </div>
             </div>
         </div>
@@ -17,13 +17,13 @@
                 <span class="massige_title">名称：</span><span class="massige_content">轮播图（swiper）</span>
             </div>
             <div class="massige">
-                <span class="massige_title">版本：</span><span class="massige_content">swiper0.0.1</span>
+                <span class="massige_title">版本：</span><span class="massige_content">swiper0.0.2</span>
             </div>
             <div class="massige">
                 <span class="massige_title">更新时间：</span><span class="massige_content">{{systemTime}}</span>
             </div>
             <div class="massige">
-                <span class="massige_title">功能：</span><span class="massige_content">实现单次的轮播</span>
+                <span class="massige_title">功能：</span><span class="massige_content">自动无限循环轮播</span>
             </div>
         </div>
     </div>
@@ -39,13 +39,15 @@ export default defineComponent({
     },
     data () {
         return {
+            indexItems: [],
             swiperImgArr: [
-                { imgUrl: require('../../assets/image/swiper0.jpg') },
-                { imgUrl: require('../../assets/image/swiper1.jpg') },
-                { imgUrl: require('../../assets/image/swiper2.jpg') },
-                { imgUrl: require('../../assets/image/swiper3.jpg') }
+                { index: 1, imgUrl: require('../../assets/image/swiper0.jpg') },
+                { index: 2, imgUrl: require('../../assets/image/swiper1.jpg') },
+                { index: 3, imgUrl: require('../../assets/image/swiper2.jpg') },
+                { index: 4, imgUrl: require('../../assets/image/swiper3.jpg') }
             ],
             imageIndex: 0,
+            indexItemStyle: false,
             systemTime: '',
             flag: true, // 节流阀 防止快速滑动
             playTimer: 0, // 圆点定时器
@@ -57,7 +59,21 @@ export default defineComponent({
             interval: 2000 // 滚动间隔时间
         }
     },
+    created () {
+        this.indexItems = []
+        this.swiperImgArr.forEach(item => {
+            const obj = {
+                index: item.index,
+                indexItemStyle: false
+            }
+            this.indexItems.push(obj)
+        })
+    },
     mounted () {
+        // const fastPageObj = this.swiperImgArr[0]
+        // const lastPageObj = this.swiperImgArr[this.swiperImgArr.length - 1]
+        // this.swiperImgArr.unshift(lastPageObj)
+        // this.swiperImgArr.push(fastPageObj)
         this.addDate()
         this.startPlay()
     },
@@ -108,6 +124,14 @@ export default defineComponent({
                 } else {
                     currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
                 }
+            } else if (this.MoveLength < 0 && this.imageIndex === 0) {
+                if (-this.MoveLength > this.bannerwidth * 0.4) {
+                    this.swiperImgArr.shift()
+                    this.imageIndex--
+                    currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
+                } else {
+                    currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
+                }
             }
         },
         // slidings()方法用于处理在滑动过程中，轮播图跟着手指滑动的距离移动
@@ -120,24 +144,50 @@ export default defineComponent({
             // 获取轮播图的宽度
             this.bannerwidth = currentimg[0].offsetWidth
             // 判断是否超出滑动范围，即第一页无法再往前一页滑动，最后一页无法再往后一页滑动
+            console.log(this.MoveLength, this.imageIndex)
             if (this.MoveLength > 0 && this.imageIndex !== this.swiperImgArr.length - 1) {
                 currentimg[0].style.marginLeft = -this.MoveLength - this.imageIndex * this.bannerwidth + 'px'
             } else if (this.MoveLength < 0 && this.imageIndex !== 0) {
                 currentimg[0].style.marginLeft = -this.MoveLength - this.imageIndex * this.bannerwidth + 'px'
+            } else if (this.MoveLength < 0 && this.imageIndex === 0) {
+                const lastPageObj = this.swiperImgArr[this.swiperImgArr.length - 1]
+                this.swiperImgArr.unshift(lastPageObj)
             }
+        },
+        getIndexItemStyle () {
+            this.indexItems.forEach(item => {
+                if (this.imageIndex !== 4 && item.index - 1 === this.imageIndex) {
+                    item.indexItemStyle = true
+                } else if (this.imageIndex === 4 && item.index === 1) {
+                    item.indexItemStyle = true
+                } else {
+                    item.indexItemStyle = false
+                }
+            })
         },
         // 开启轮播
         startPlay () {
+            const that = this
+            const lastIndex = this.swiperImgArr.length
+            this.getIndexItemStyle()
             clearInterval(this.playTimer)
             this.playTimer = setInterval(() => {
-                if (this.imageIndex === 3) {
-                    this.imageIndex = -1
-                }
-                this.imageIndex++
                 const currentimg: any = document.getElementsByClassName('slide')
-                this.bannerwidth = currentimg[0].offsetWidth
-                currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
-                currentimg[0].style.transition = 'all 1s ease'
+                that.bannerwidth = currentimg[0].offsetWidth
+                that.imageIndex = that.imageIndex + 1
+                if (that.imageIndex === lastIndex) {
+                    const fastPageObj = that.swiperImgArr[0]
+                    that.swiperImgArr.push(fastPageObj)
+                    currentimg[0].style.transition = 'all 1s ease'
+                } else if (that.imageIndex === lastIndex + 1) {
+                    that.imageIndex = 0
+                    currentimg[0].style.transition = 'all 0s ease'
+                    that.swiperImgArr.pop()
+                } else {
+                    currentimg[0].style.transition = 'all 1s ease'
+                }
+                that.getIndexItemStyle()
+                currentimg[0].style.marginLeft = -that.imageIndex * that.bannerwidth + 'px'
             }, 3000)
         }
     }
