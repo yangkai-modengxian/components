@@ -17,13 +17,13 @@
                 <span class="massige_title">名称：</span><span class="massige_content">轮播图（swiper）</span>
             </div>
             <div class="massige">
-                <span class="massige_title">版本：</span><span class="massige_content">swiper0.0.2</span>
+                <span class="massige_title">版本：</span><span class="massige_content">swiper0.1</span>
             </div>
             <div class="massige">
                 <span class="massige_title">更新时间：</span><span class="massige_content">{{systemTime}}</span>
             </div>
             <div class="massige">
-                <span class="massige_title">功能：</span><span class="massige_content">自动无限循环轮播</span>
+                <span class="massige_title">功能：</span><span class="massige_content">自动+手动无限循环轮播完成</span>
             </div>
         </div>
     </div>
@@ -46,7 +46,7 @@ export default defineComponent({
                 { index: 3, imgUrl: require('../../assets/image/swiper2.jpg') },
                 { index: 4, imgUrl: require('../../assets/image/swiper3.jpg') }
             ],
-            imageIndex: 0,
+            imageIndex: 1,
             indexItemStyle: false,
             systemTime: '',
             flag: true, // 节流阀 防止快速滑动
@@ -56,25 +56,30 @@ export default defineComponent({
             StartPoint: 0, // 触摸开始的点的横坐标
             EndPoint: 0, // 触摸结束的点的横坐标
             MoveLength: 0, // StartPoint与EndPoint的差值
-            interval: 2000 // 滚动间隔时间
+            interval: 2000, // 滚动间隔时间
+            initialImgArrLength: 0
         }
     },
     created () {
+        const lastPageObj = this.swiperImgArr[this.swiperImgArr.length - 1]
+        this.swiperImgArr.unshift(lastPageObj)
         this.indexItems = []
-        this.swiperImgArr.forEach(item => {
-            const obj = {
-                index: item.index,
-                indexItemStyle: false
+        this.swiperImgArr.forEach((item, index) => {
+            if (index > 0) {
+                const obj = {
+                    index: item.index,
+                    indexItemStyle: false
+                }
+                this.indexItems.push(obj)
             }
-            this.indexItems.push(obj)
         })
+        this.initialImgArrLength = this.swiperImgArr.length
     },
     mounted () {
-        // const fastPageObj = this.swiperImgArr[0]
-        // const lastPageObj = this.swiperImgArr[this.swiperImgArr.length - 1]
-        // this.swiperImgArr.unshift(lastPageObj)
-        // this.swiperImgArr.push(fastPageObj)
         this.addDate()
+        const currentimg: any = document.getElementsByClassName('slide')
+        this.bannerwidth = currentimg[0].offsetWidth
+        currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
         this.startPlay()
     },
     methods: {
@@ -104,35 +109,56 @@ export default defineComponent({
             this.Jump()
             // 触摸事件完成，继续自动轮播
             clearInterval(this.playTimer) // 防止定时器叠加
-            this.startPlay()
+            setTimeout(() => {
+                this.startPlay()
+            }, 500)
         },
         // Jump()方法用于处理滑动到一定程度后松手自动跳转到下一页或上一页
         Jump () {
             const currentimg: any = document.getElementsByClassName('slide')
+            const lastIndex = this.swiperImgArr.length
+            console.log(this.imageIndex, lastIndex)
             // 滑动超过轮播图宽度的百分之40，则跳转下一张，否则不跳转
-            if (this.MoveLength > 0 && this.imageIndex !== this.swiperImgArr.length - 1) {
+            if (this.MoveLength > 0 && this.imageIndex !== lastIndex - 2) {
                 if (this.MoveLength > this.bannerwidth * 0.4) {
                     this.imageIndex++
                     currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
                 } else {
                     currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
                 }
-            } else if (this.MoveLength < 0 && this.imageIndex !== 0) {
+            } else if (this.MoveLength < 0 && this.imageIndex !== 1) {
                 if (-this.MoveLength > this.bannerwidth * 0.4) {
                     this.imageIndex--
                     currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
                 } else {
                     currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
                 }
-            } else if (this.MoveLength < 0 && this.imageIndex === 0) {
+            } else if (this.MoveLength < 0 && this.imageIndex === 1) {
                 if (-this.MoveLength > this.bannerwidth * 0.4) {
-                    this.swiperImgArr.shift()
-                    this.imageIndex--
+                    this.imageIndex = lastIndex - 1
                     currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
+                } else {
+                    currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
+                }
+            } else if (this.MoveLength > 0 && this.imageIndex === this.initialImgArrLength - 2) {
+                if (this.MoveLength > this.bannerwidth * 0.4) {
+                    this.imageIndex++
+                    currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
+                    const fastPageObj = this.swiperImgArr[1]
+                    this.swiperImgArr.push(fastPageObj)
+                } else {
+                    currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
+                }
+            } else if (this.MoveLength > 0 && this.imageIndex === this.initialImgArrLength - 1) {
+                if (this.MoveLength > this.bannerwidth * 0.4) {
+                    this.imageIndex = 1
+                    currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
+                    this.swiperImgArr.pop()
                 } else {
                     currentimg[0].style.marginLeft = -this.imageIndex * this.bannerwidth + 'px'
                 }
             }
+            currentimg[0].style.transition = 'none'
         },
         // slidings()方法用于处理在滑动过程中，轮播图跟着手指滑动的距离移动
         slidings () {
@@ -144,14 +170,10 @@ export default defineComponent({
             // 获取轮播图的宽度
             this.bannerwidth = currentimg[0].offsetWidth
             // 判断是否超出滑动范围，即第一页无法再往前一页滑动，最后一页无法再往后一页滑动
-            console.log(this.MoveLength, this.imageIndex)
             if (this.MoveLength > 0 && this.imageIndex !== this.swiperImgArr.length - 1) {
                 currentimg[0].style.marginLeft = -this.MoveLength - this.imageIndex * this.bannerwidth + 'px'
             } else if (this.MoveLength < 0 && this.imageIndex !== 0) {
                 currentimg[0].style.marginLeft = -this.MoveLength - this.imageIndex * this.bannerwidth + 'px'
-            } else if (this.MoveLength < 0 && this.imageIndex === 0) {
-                const lastPageObj = this.swiperImgArr[this.swiperImgArr.length - 1]
-                this.swiperImgArr.unshift(lastPageObj)
             }
         },
         getIndexItemStyle () {
@@ -176,13 +198,8 @@ export default defineComponent({
                 that.bannerwidth = currentimg[0].offsetWidth
                 that.imageIndex = that.imageIndex + 1
                 if (that.imageIndex === lastIndex) {
-                    const fastPageObj = that.swiperImgArr[0]
-                    that.swiperImgArr.push(fastPageObj)
-                    currentimg[0].style.transition = 'all 1s ease'
-                } else if (that.imageIndex === lastIndex + 1) {
                     that.imageIndex = 0
                     currentimg[0].style.transition = 'all 0s ease'
-                    that.swiperImgArr.pop()
                 } else {
                     currentimg[0].style.transition = 'all 1s ease'
                 }
